@@ -384,3 +384,273 @@ print("Partition count after change: %d" % departures_df.rdd.getNumPartitions())
 
 ```
 ________________________________________________
+
+- Create a new DataFrame normal_df by joining flights_df with airports_df.
+- Determine which type of join is used in the query plan.
+``` 
+# Imports
+import pyspark.sql.functions
+
+# Join the flights_df and aiports_df DataFrames
+normal_df = flights_df.join(airports_df, flights_df["Destination Airport"] == airports_df["IATA"])    
+
+# Show the query plan
+normal_df.explain()
+
+```
+________________________________________________
+
+- Import the broadcast() method from pyspark.sql.functions.
+- Create a new DataFrame broadcast_df by joining flights_df with airports_df, using the broadcasting.
+- Show the query plan and consider differences from the original.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+from pyspark.sql.functions import broadcast
+
+# Join the flights_df and airports_df DataFrames using broadcasting
+broadcast_df = flights_df.join(broadcast(airports_df), \
+    flights_df["Destination Airport"] == airports_df["IATA"] )
+
+# Show the query plan and compare against the original
+broadcast_df.explain()
+
+```
+________________________________________________
+
+- Import the file 2015-departures.csv.gz to a DataFrame. Note the header is already defined.
+- Filter the DataFrame to contain only flights with a duration over 0 minutes. Use the index of the column, not the column name (remember to use .printSchema() to see the column names / order).
+- Add an ID column.
+- Write the file out as a JSON document named output.json.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+
+# Import the data to a DataFrame
+departures_df = spark.read.csv('2015-departures.csv.gz', header=True)
+
+# Remove any duration of 0
+departures_df = departures_df.filter(departures_df[3]> 0)
+
+# Add an ID column
+departures_df = departures_df.withColumn('id', F.monotonically_increasing_id())
+
+# Write the file out to JSON format
+departures_df.write.json('output.json', mode='overwrite')
+
+```
+________________________________________________
+
+- Import the annotations.csv.gz file to a DataFrame and perform a row count. Specify a separator character of |.
+- Query the data for the number of rows beginning with #.
+- Import the file again to a new DataFrame, but specify the comment character in the options to remove any commented rows.
+- Count the new DataFrame and verify the difference is as expected.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Import the file to a DataFrame and perform a row count
+annotations_df = spark.read.csv('annotations.csv.gz', sep='|')
+full_count = annotations_df.count()
+
+# Count the number of rows beginning with '#'
+comment_count = annotations_df.filter(annotations_df._c0.startswith('#')).count()
+
+# Import the file to a new DataFrame, without commented rows
+no_comments_df = spark.read.csv('annotations.csv.gz', sep='|', comment='#')
+
+# Count the new DataFrame and verify the difference is as expected
+no_comments_count = no_comments_df.count()
+print("Full count: %d\nComment count: %d\nRemaining count: %d" % (full_count, comment_count, no_comments_count))
+
+```
+________________________________________________
+
+- Create a new variable tmp_fields using the annotations_df DataFrame column '_c0' splitting it on the tab character.
+- Create a new column in annotations_df named 'colcount' representing the number of fields defined in the previous step.
+- Filter out any rows from annotations_df containing fewer than 5 fields.
+- Count the number of rows in the DataFrame and compare to the initial_count.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Split _c0 on the tab character and store the list in a variable
+tmp_fields = F.split(annotations_df['_c0'], '\t')
+
+# Create the colcount column on the DataFrame
+annotations_df = annotations_df.withColumn('colcount', F.size(tmp_fields))
+
+# Remove any rows containing fewer than 5 fields
+annotations_df_filtered = annotations_df.filter(~ (annotations_df["colcount"] < 5))
+
+# Count the number of rows
+final_count = annotations_df_filtered.count()
+print("Initial count: %d\nFinal count: %d" % (initial_count, final_count))
+
+```
+________________________________________________
+
+- Split the content of the '_c0' column on the tab character and store in a variable called split_cols.
+- Add the following columns based on the first four entries in the variable above: folder, filename, width, height on a DataFrame named split_df.
+- Add the split_cols variable as a column.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Split the content of _c0 on the tab character (aka, '\t')
+split_cols = F.split(annotations_df["_c0"], '\t')
+
+# Add the columns folder, filename, width, and height
+split_df = annotations_df.withColumn('folder', split_cols.getItem(0))
+split_df = split_df.withColumn('filename', split_cols.getItem(1))
+split_df = split_df.withColumn('width', split_cols.getItem(2))
+split_df = split_df.withColumn('height', split_cols.getItem(3))
+
+# Add split_cols as a column
+split_df = split_df.withColumn('split_cols', split_cols)
+
+```
+________________________________________________
+
+- Rename the _c0 column to folder on the valid_folders_df DataFrame.
+- Count the number of rows in split_df.
+- Join the two DataFrames on the folder name, and call the resulting DataFrame joined_df. Make sure to broadcast the smaller DataFrame.
+- Check the number of rows remaining in the DataFrame and compare.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Rename the column in valid_folders_df
+valid_folders_df = valid_folders_df.withColumnRenamed('_c0', 'folder')
+
+# Count the number of rows in split_df
+split_count = split_df.count()
+
+# Join the DataFrames
+joined_df = split_df.join(F.broadcast(valid_folders_df), "folder")
+
+# Compare the number of rows remaining
+joined_count = joined_df.count()
+print("Before: %d\nAfter: %d" % (split_count, joined_count))
+
+```
+________________________________________________
+
+- Determine the row counts for each DataFrame.
+- Create a DataFrame containing only the invalid rows.
+- Validate the count of the new DataFrame is as expected.
+- Determine the number of distinct folder rows removed.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Determine the row counts for each DataFrame
+split_count = split_df.count()
+joined_count = joined_df.count()
+
+# Create a DataFrame containing the invalid rows
+invalid_df = split_df.join(F.broadcast(joined_df), 'folder', 'left_anti')
+
+# Validate the count of the new DataFrame is as expected
+invalid_count = invalid_df.count()
+print(" split_df:\t%d\n joined_df:\t%d\n invalid_df: \t%d" % (split_count, joined_count, invalid_count))
+
+# Determine the number of distinct folder rows removed
+invalid_folder_count = invalid_df.select('folder').distinct().count()
+print("%d distinct invalid folders found" % invalid_folder_count)
+
+```
+________________________________________________
+
+- Select the column representing the dog details from the DataFrame and show the first 10 un-truncated rows.
+- Create a new schema as you've done before, using breed, start_x, start_y, end_x, and end_y as the names. Make sure to specify the proper data types for each field in the schema (any number value is an integer).
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Select the dog details and show 10 untruncated rows
+print(joined_df.select('dog_list').show(10, truncate=False))
+
+# Define a schema type for the details in the dog list
+DogType = StructType([
+	StructField("breed", StringType(), False),
+    StructField("start_x", IntegerType(), False),
+    StructField("start_y", IntegerType(), False),
+    StructField("end_x", IntegerType(), False),
+    StructField("end_y", IntegerType(), False)
+])
+
+```
+________________________________________________
+
+- Create a Python function to split each entry in dog_list to its appropriate parts. Make sure to convert any strings into the appropriate types or the DogType will not parse correctly.
+- Create a UDF using the above function.
+- Use the UDF to create a new column called dogs. Drop the previous column in the same command.
+- Show the number of dogs in the new column for the first 10 rows.
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Create a function to return the number and type of dogs as a tuple
+def dogParse(doglist):
+  dogs = []
+  for dog in doglist:
+    (breed, start_x, start_y, end_x, end_y) = dog.split(',')
+    dogs.append((breed, int(start_x), int(start_y), int(end_x), int(end_y)))
+  return dogs
+
+# Create a UDF
+udfDogParse = F.udf(dogParse, ArrayType(DogType))
+
+# Use the UDF to list of dogs and drop the old column
+joined_df = joined_df.withColumn('dogs', udfDogParse('dog_list')).drop('dog_list')
+
+# Show the number of dogs in the first 10 rows
+joined_df.select(F.size('dogs')).show(10)
+
+```
+________________________________________________
+
+- Define a Python function to take a list of tuples (the dog objects) and calculate the total number of "dog" pixels per image.
+- Create a UDF of the function and use it to create a new column called 'dog_pixels' on the DataFrame.
+- Create another column, 'dog_percent', representing the percentage of 'dog_pixels' in the image. Make sure this is between 0-100%. Use the string name of the column alone (ie, "columnname" rather than df.columnname).
+- Show the first 10 rows with more than 60% 'dog_pixels' in the image. 
+
+``` 
+# Import the broadcast method from pyspark.sql.functions
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+
+# Define a UDF to determine the number of pixels per image
+def dogPixelCount(doglist):
+  totalpixels = 0
+  for dog in doglist:
+    totalpixels += (dog[3] - dog[1]) * (dog[4] - dog[2])
+  return totalpixels
+
+# Define a UDF for the pixel count
+udfDogPixelCount = F.udf(dogPixelCount, IntegerType())
+joined_df = joined_df.withColumn('dog_pixels', udfDogPixelCount('dogs'))
+
+# Create a column representing the percentage of pixels
+joined_df = joined_df.withColumn('dog_percent', (joined_df.dog_pixels / (joined_df.width * joined_df.height)) * 100)
+
+# Show the first 10 annotations with more than 60% dog
+joined_df.filter('dog_percent > 60').show(10)
+
+```
+________________________________________________
