@@ -1,3 +1,9 @@
+[AA_DFW_2017_Departures_Short.csv.gz](https://github.com/lorddaffy/Cleaning-Data-with-PySpark/files/8507487/AA_DFW_2017_Departures_Short.csv.gz)
+[AA_DFW_2016_Departures_Short.csv.gz](https://github.com/lorddaffy/Cleaning-Data-with-PySpark/files/8507488/AA_DFW_2016_Departures_Short.csv.gz)
+[AA_DFW_2015_Departures_Short.csv.gz](https://github.com/lorddaffy/Cleaning-Data-with-PySpark/files/8507489/AA_DFW_2015_Departures_Short.csv.gz)
+[AA_DFW_2014_Departures_Short.csv.gz](https://github.com/lorddaffy/Cleaning-Data-with-PySpark/files/8507490/AA_DFW_2014_Departures_Short.csv.gz)
+[DallasCouncilVoters.csv.gz](https://github.com/lorddaffy/Cleaning-Data-with-PySpark/files/8507491/DallasCouncilVoters.csv.gz)
+[DallasCouncilVotes.csv.gz](https://github.com/lorddaffy/Cleaning-Data-with-PySpark/files/8507492/DallasCouncilVotes.csv.gz)
 # Cleaning-Data-with-PySpark
 
 **Working with real world datasets (6 datasets `Dallas Council Votes / Dallas Council Voters / Flights - 2014 / Flights - 2015 / Flights - 2016 / Flights - 2017`), with missing fields, bizarre formatting, and orders of magnitude more data. Knowing what’s needed to prepare data processes using Python with Apache Spark. Practicing and Discover  terminologies, methods, and some best practices to create a performant, maintainable, and understandable data processing platform.**
